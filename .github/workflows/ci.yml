@@ -13,8 +13,8 @@ on:
 env:
   CI_CORE_ONLY: "true"
   # The completion quality baselines come from the platform `jrt` class library, so they're tied to the JDK
-  # MAJOR version. Pin it to match the version the committed baselines were recorded on (JBR 25 locally).
-  JAVA_VERSION: "25"
+  # MAJOR version. Pin it to match the version the committed baselines were recorded on (JBR 21 locally).
+  JAVA_VERSION: "21"
 
 concurrency:
   group: ci-${{ github.ref }}
