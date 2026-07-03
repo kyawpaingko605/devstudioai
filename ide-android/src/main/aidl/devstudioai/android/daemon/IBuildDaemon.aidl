@@ -1,9 +1,9 @@
 // IPC for build-process isolation (docs/build-process-isolation.md). UI -> daemon commands, served by
 // BuildDaemonService in the ":build" OS process, which hosts a real headless build engine (ProjectManager +
 // IdeServices.buildRunner) so builds run off the IDE's heap. Phase 4 adds run-user-code + stdin/permission.
-package dev.ide.android.daemon;
+package devstudioai.android.daemon;
 
-import dev.ide.android.daemon.IBuildCallback;
+import devstudioai.android.daemon.IBuildCallback;
 
 interface IBuildDaemon {
     // The :build process id, so the UI can confirm the daemon runs in a DIFFERENT process.
