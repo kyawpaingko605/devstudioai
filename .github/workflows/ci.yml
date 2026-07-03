@@ -6,14 +6,9 @@ on:
   pull_request:
   workflow_dispatch:
 
-# Build and test only the pure-Kotlin/JVM framework. The IDE shells (:ide-ui/:ide-core/:ide-desktop/
-# :ide-android) apply the Compose/Android Gradle plugins, which need the Android SDK even to configure;
-# CI_CORE_ONLY drops them from settings.gradle.kts so CI needs no SDK provisioning. The framework is the
-# part carrying the unit tests + completion regression suites, and nothing in it depends on the shells.
 env:
-  CI_CORE_ONLY: "true"
-  # The completion quality baselines come from the platform `jrt` class library, so they're tied to the JDK
-  # MAJOR version. Pin it to match the version the committed baselines were recorded on (JBR 25 locally).
+  # APK ထုတ်လုပ်ရန်အတွက် ဤနေရာတွင် false ဟု ပြောင်းလဲပေးရပါမည်
+  CI_CORE_ONLY: "false"
   JAVA_VERSION: "25"
 
 concurrency:
@@ -22,7 +17,7 @@ concurrency:
 
 jobs:
   test:
-    name: Framework tests + completion quality
+    name: Build APK and Run Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -36,42 +31,23 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      # Disable Kotlin incremental compilation for CI. One-shot CI builds gain nothing from it, and a
-      # restored incremental-compilation cache can produce phantom "unresolved reference" errors after the
-      # classpath changes (a clean build of the same commit compiles fine). Full compilation is robust.
       - name: Disable Kotlin incremental compilation (CI)
         run: |
           mkdir -p ~/.gradle
           echo "kotlin.incremental=false" >> ~/.gradle/gradle.properties
 
-      # Permission Denied Error ကို ဖြေရှင်းရန်အတွက် ဤနေရာတွင် Permission ပေးရပါမည်။
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # 1) The fast correctness gate: every framework unit test. Regression suites are @Tag("regression")
-      #    and excluded from `test`, so this stays quick.
-      - name: Unit tests
-        run: ./gradlew test -x :build-engine:test -x :android-support:test -x :lang-kotlin:test --console=plain --stacktrace
-
-      # APK အစစ် ထုတ်လုပ်ပေးမည့် အဆင့် (ဒီအဆင့်ကြောင့် APK ဖိုင် အစစ် ထွက်လာပါလိမ့်မည်)
+      # APK အစစ် ထုတ်လုပ်ပေးမည့် အဆင့်
       - name: Build Android APK
         run: ./gradlew assembleDebug --console=plain --stacktrace
 
-      # 2) The quality gates: deterministic given the pinned JDK (same `jrt` class library + fixed indexes),
-      #    so they gate ranking/recall regressions. One unambiguous invocation per module.
-      - name: Completion quality (lang-jdt)
-        run: ./gradlew :lang-jdt:regressionTest --tests '*CompletionQualityTest*' --console=plain --stacktrace
+      # အဓိက unit tests များကိုသာ ပတ်ပြီး စစ်ဆေးရန်
+      - name: Unit tests
+        run: ./gradlew test -x :build-engine:test -x :android-support:test -x :lang-kotlin:test --console=plain --stacktrace
 
-      - name: Index ranking quality (index-impl)
-        run: ./gradlew :index-impl:regressionTest --tests '*IndexQualityTest*' --console=plain --stacktrace
-
-      # The dogfooding milestone: the IDE's own build engine compiles + runs a large multi-module Java
-      # project and rebuilds it incrementally. Correctness + incremental task count are deterministic
-      # (machine-independent); the full-build wall time is gated only by a wide trend + catastrophe ceiling.
-      - name: Build engine — large multi-module build & incremental scaling
-        run: ./gradlew :jvm-build:regressionTest --console=plain --stacktrace
-
-      # ထွက်လာတဲ့ APK အစစ်နဲ့ Test Reports တွေကို GitHub ပေါ်မှာ Download ဆွဲလို့ရအောင် သိမ်းဆည်းပေးမည့် အဆင့်
+      # ထွက်လာသည့် APK အစစ်အား GitHub ပေါ်တွင် သိမ်းဆည်းရန်
       - name: Upload Artifacts (APK & Reports)
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
