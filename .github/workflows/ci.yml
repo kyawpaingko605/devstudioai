@@ -44,6 +44,10 @@ jobs:
           mkdir -p ~/.gradle
           echo "kotlin.incremental=false" >> ~/.gradle/gradle.properties
 
+      # Permission Denied Error ကို ဖြေရှင်းရန်အတွက် ဤနေရာတွင် Permission ပေးရပါမည်။
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
       # 1) The fast correctness gate: every framework unit test. Regression suites are @Tag("regression")
       #    and excluded from `test`, so this stays quick.
       - name: Unit tests
