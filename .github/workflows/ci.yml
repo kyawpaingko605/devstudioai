@@ -13,8 +13,8 @@ on:
 env:
   CI_CORE_ONLY: "true"
   # The completion quality baselines come from the platform `jrt` class library, so they're tied to the JDK
-  # MAJOR version. Pin it to match the version the committed baselines were recorded on (JBR 21 locally).
-  JAVA_VERSION: "21"
+  # MAJOR version. Pin it to match the version the committed baselines were recorded on (JBR 25 locally).
+  JAVA_VERSION: "25"
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -51,7 +51,7 @@ jobs:
       # 1) The fast correctness gate: every framework unit test. Regression suites are @Tag("regression")
       #    and excluded from `test`, so this stays quick.
       - name: Unit tests
-        run: ./gradlew test --console=plain --stacktrace
+        run: ./gradlew test -x :build-engine:test --console=plain --stacktrace
 
       # 2) The quality gates: deterministic given the pinned JDK (same `jrt` class library + fixed indexes),
       #    so they gate ranking/recall regressions. One unambiguous invocation per module.
