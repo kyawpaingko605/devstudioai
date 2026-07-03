@@ -1,27 +1,20 @@
-// IPC for build-process isolation (docs/build-process-isolation.md). Daemon (:build) -> UI events.
-package dev.ide.android.daemon;
+// IPC for build-process isolation (docs/build-process-isolation.md). Daemon -> UI callbacks,
+// invoked on a background thread in the UI process. Oneway so the daemon never blocks on the UI.
+package devstudioai.android.daemon;
 
-interface IBuildCallback {
-    // oneway: fire-and-forget, ordered per-binder, never blocks the daemon. These carry BuildState DELTAS
-    // (the UI reassembles the full state on its side). Enums travel as their .name() string, decoded with
-    // RunStatus.valueOf / StepStatus.valueOf — safe because both processes run the same dexed classes.
-    oneway void onOpened(boolean ok, String error);              // open(workspaceDir) completed
-    oneway void onStatus(String status, String moduleName, long elapsedMs); // RunStatus changed
-    oneway void onStep(String name, String status);              // a build step's StepStatus changed
-    oneway void onLog(String message);                           // one new build-log line
-    // one new structured diagnostic (the Problems tab). severity travels as UiSeverity.name(); file/detail/task nullable.
-    oneway void onDiagnostic(String severity, String message, String kind, String source, String file, int line, int column, String detail, String task);
+oneway interface IBuildCallback {
+    // Heavy engine initialization finished. If [success] is false, the project failed to open
+    // (e.g. invalid build scripts) and subsequent commands are invalid.
+    void onOpened(boolean success);
 
-    // --- Phase 4: run-user-code (the interactive console). The daemon hosts the dex-run; these stream the
-    // program's stdio + lifecycle + the run-sandbox permission prompts back to the UI. Enums travel as
-    // ordinals (RunPhase / ConsoleChunkKind), decoded by index — same dexed classes both processes.
-    // RunConsoleUi scalar state; runId < 0 means the console cleared (null). exitCode valid only if hasExit.
-    oneway void onRunConsole(int runId, String moduleName, String mainClass, int phase, boolean acceptsInput, boolean hasExit, int exitCode);
-    oneway void onConsoleChunk(int runId, String text, int kind); // one new transcript chunk (output/input/system)
-    oneway void onPermission(int reqId, String category, String detail); // pending sandbox prompt; reqId < 0 = cleared
+    // One-shot state delta: stdout text appended to the active build console.
+    void onBuildOutput(String text);
 
-    // The android "Run" just installed [packageName]; launch it HERE in the UI process. The install runs in
-    // :build, but firing the installed app's activity from that background process is blocked by Android's
-    // background-activity-launch rules — the UI has a foreground activity, so it can.
-    oneway void onLaunchPackage(String packageName);
+    // One-shot state delta: the active build completed / was canceled.
+    void onBuildComplete(boolean success);
+
+    // --- Phase 4: interactive run (the program runs in :build; these pipe its stdout + request permission).
+    void onRunOutput(String text);       // stdout line from the running program
+    void onRunComplete(int exitCode);    // program exited
+    void onRequestPermission(int id, String permission, String rationale); // prompt user for a sandbox permission
 }
